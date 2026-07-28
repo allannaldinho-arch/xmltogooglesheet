@@ -137,11 +137,8 @@
                 statusDiv.innerText = 'Conectado ao Google com sucesso!';
             };
 
-            if (gapi.client.getToken() === null) {
-                tokenClient.requestAccessToken({ prompt: 'consent' });
-            } else {
-                tokenClient.requestAccessToken({ prompt: '' });
-            }
+            // MODIFICAÇÃO: Removido o prompt de consentimento forçado para lembrar a conta
+            tokenClient.requestAccessToken({ prompt: '' });
         }
 
         function pegarValorTag(doc, nomeTag) {
