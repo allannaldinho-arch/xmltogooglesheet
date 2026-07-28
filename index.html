@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitor de XML para Planilha - NF-e</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 550px;
+            text-align: center;
+        }
+        h2 {
+            font-family: 'Arial', sans-serif;
+            font-size: 20px;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        p {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 25px;
+        }
+        .file-drop-area {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #f8fafc;
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+            width: 100%;
+        }
+        button {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #1d4ed8;
+        }
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Processador de XML para Planilha</h2>
+        <p>Selecione um ou mais arquivos XML de Nota Fiscal para gerar o relatório.</p>
+        
+        <div class="file-drop-area">
+            <input type="file" id="xmlFile" accept=".xml" multiple>
+        </div>
+        
+        <button onclick="processarXMLs()">Gerar Planilha Formatada</button>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        function pegarValorTag(doc, nomeTag) {
+            let elemento = doc.getElementsByTagName(nomeTag)[0];
+            return elemento ? elemento.textContent.trim() : "";
+        }
+
+        function pegarValorTagDentroDe(doc, tagPai, nomeTag) {
+            let pai = doc.getElementsByTagName(tagPai)[0];
+            if (pai) {
+                let elemento = pai.getElementsByTagName(nomeTag)[0];
+                return elemento ? elemento.textContent.trim() : "";
+            }
+            return "";
+        }
+
+        function formatarData(dataStr) {
+            if (!dataStr) return "";
+            let partesData = dataStr.split("T")[0].split("-");
+            if (partesData.length === 3) {
+                return `${partesData[2]}/${partesData[1]}/${partesData[0]}`;
+            }
+            return dataStr;
+        }
+
+        function obterMes(dataFmt) {
+            if (!dataFmt) return "";
+            let partes = dataFmt.split("/");
+            if (partes.length === 3) {
+                return partes[1]; // Retorna o mês (ex: 07)
+            }
+            return "";
+        }
+
+        function tratarNome(nomeOriginal) {
+            let nomeUpper = nomeOriginal.toUpperCase();
+            if (nomeUpper.includes("MAIRIBEL COSMETICOS LTDA") || nomeUpper.includes("MAIRIBEL")) {
+                return "MAIRIBEL";
+            }
+            if (nomeUpper.includes("REFERENCE COLLOR LTDA") || nomeUpper.includes("REFERENCE")) {
+                return "REFERENCE";
+            }
+            if (nomeUpper.includes("HIDRATYLIFE COSMETICOS LTDA") || nomeUpper.includes("HIDRATYLIFE")) {
+                return "HIDRATYLIFE";
+            }
+            if (nomeUpper.includes("COLORMAKE COMERCIO DE COSMETICOS LTDA") || nomeUpper.includes("COLORMAKE")) {
+                return "COLORMAKE";
+            }
+            return nomeOriginal;
+        }
+
+        function formatarMoedaBR(valorStr) {
+            if (!valorStr) return "";
+            let num = parseFloat(valorStr);
+            if (isNaN(num)) return valorStr;
+            return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        async function processarXMLs() {
+            const fileInput = document.getElementById('xmlFile');
+            const statusDiv = document.getElementById('status');
+
+            if (fileInput.files.length === 0) {
+                statusDiv.style.color = 'red';
+                statusDiv.innerText = 'Por favor, selecione ao menos um arquivo XML!';
+                return;
+            }
+
+            statusDiv.style.color = '#333';
+            statusDiv.innerText = 'Processando arquivos...';
+
+            let linhasTabelaHTML = "";
+
+            try {
+                for (let file of fileInput.files) {
+                    const textoXML = await file.text();
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(textoXML, "text/xml");
+
+                    let dataBruta = pegarValorTag(xmlDoc, "dhEmi");
+                    let dataEmissao = formatarData(dataBruta); 
+                    let mesEmissao = obterMes(dataEmissao);    
+                    
+                    let nomeBruto = pegarValorTag(xmlDoc, "xNome");
+                    let fornecedorTratado = tratarNome(nomeBruto);
+                    
+                    let numeroNota = pegarValorTag(xmlDoc, "nNF");
+                    
+                    let valorTotalBruto = pegarValorTagDentroDe(xmlDoc, "ICMSTot", "vNF");
+                    if (!valorTotalBruto) valorTotalBruto = pegarValorTag(xmlDoc, "vNF");
+                    let valorTotalFormatado = formatarMoedaBR(valorTotalBruto);
+
+                    let valorDescontoFormatado = "";
+                    if (!fornecedorTratado.toUpperCase().includes("COLORMAKE")) {
+                        let valorDescBruto = pegarValorTagDentroDe(xmlDoc, "ICMSTot", "vDesc");
+                        valorDescontoFormatado = formatarMoedaBR(valorDescBruto);
+                    }
+
+                    let colA = "FORNECEDOR";                       
+                    let colB = dataEmissao;                          
+                    let colC = mesEmissao;                           
+                    let colD = fornecedorTratado;                    
+                    let colE = numeroNota;                           
+                    let colF = valorTotalFormatado;                  
+                    let colG = valorDescontoFormatado;               
+                    let colH = "ABERTO";                             
+                    
+                    let dataCurta = dataEmissao.substring(0, 5);     
+                    let colI = `PEDIDO ${dataCurta} INTER PJ`;       
+
+                    // Linhas com borda simples, fonte Arial 12 e alinhamentos definidos
+                    linhasTabelaHTML += `
+                        <tr>
+                            <td style="mso-number-format:'\@'; font-family: Arial; font-size: 12pt; text-align: left; border: .5pt solid windowtext;">${colA}</td>
+                            <td style="mso-number-format:'\@'; font-family: Arial; font-size: 12pt; text-align: center; border: .5pt solid windowtext;">${colB}</td>
+                            <td style="mso-number-format:'\@'; font-family: Arial; font-size: 12pt; text-align: center; border: .5pt solid windowtext;">${colC}</td>
+                            <td style="mso-number-format:'\@'; font-family: Arial; font-size: 12pt; text-align: left; border: .5pt solid windowtext;">${colD}</td>
+                            <td style="mso-number-format:'\@'; font-family: Arial; font-size: 12pt; text-align: right; border: .5pt solid windowtext;">${colE}</td>
+                            <td style="font-family: Arial; font-size: 12pt; text-align: right; border: .5pt solid windowtext;">${colF}</td>
+                            <td style="font-family: Arial; font-size: 12pt; text-align: right; border: .5pt solid windowtext;">${colG}</td>
+                            <td style="mso-number-format:'\@'; font-family: Arial; font-size: 12pt; text-align: left; border: .5pt solid windowtext;">${colH}</td>
+                            <td style="mso-number-format:'\@'; font-family: Arial; font-size: 12pt; text-align: left; border: .5pt solid windowtext;">${colI}</td>
+                        </tr>
+                    `;
+                }
+
+                if (linhasTabelaHTML !== "") {
+                    let templateExcel = `
+                        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/1999/xlink">
+                        <head>
+                            <meta charset="UTF-8">
+                            <!--[if gte mso 9]>
+                            <xml>
+                                <x:ExcelWorkbook>
+                                    <x:ExcelWorksheets>
+                                        <x:ExcelWorksheet>
+                                            <x:Name>Relatório Notas</x:Name>
+                                            <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                                        </x:ExcelWorksheet>
+                                    </x:ExcelWorksheets>
+                                </x:ExcelWorkbook>
+                            </xml>
+                            <![endif]-->
+                        </head>
+                        <body>
+                            <table>
+                                ${linhasTabelaHTML}
+                            </table>
+                        </body>
+                        </html>
+                    `;
+
+                    const blob = new Blob([templateExcel], { type: 'application/vnd.ms-excel' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'relatorio_notas.xls';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    statusDiv.style.color = 'green';
+                    statusDiv.innerText = 'Sucesso! Planilha gerada com bordas, fonte Arial 12 e alinhamentos.';
+                } else {
+                    statusDiv.style.color = 'red';
+                    statusDiv.innerText = 'Nenhum dado encontrado.';
+                }
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.style.color = 'red';
+                statusDiv.innerText = 'Ocorreu um erro ao processar. Abra o console (F12) para detalhes.';
+            }
+        }
+    </script>
+</body>
+</html>
