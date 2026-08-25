@@ -75,6 +75,12 @@
         #authButton:hover {
             background-color: #15803d;
         }
+        #sheetButton {
+            background-color: #0d9488;
+        }
+        #sheetButton:hover {
+            background-color: #0f766e;
+        }
         #status {
             margin-top: 20px;
             font-weight: bold;
@@ -95,6 +101,9 @@
         </div>
         
         <button onclick="processarEEnviarXMLs()">2. Enviar Dados para a Planilha</button>
+        
+        <!-- Botão novo para abrir a planilha diretamente -->
+        <button id="sheetButton" onclick="abrirPlanilha()">3. Abrir Planilha</button>
         
         <div id="status"></div>
     </div>
@@ -137,8 +146,12 @@
                 statusDiv.innerText = 'Conectado ao Google com sucesso!';
             };
 
-            // MODIFICAÇÃO: Removido o prompt de consentimento forçado para lembrar a conta
             tokenClient.requestAccessToken({ prompt: '' });
+        }
+
+        function abrirPlanilha() {
+            const urlPlanilha = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
+            window.open(urlPlanilha, '_blank');
         }
 
         function pegarValorTag(doc, nomeTag) {
@@ -243,7 +256,7 @@
                         valorDescontoFormatado = formatarMoedaBR(valorDescBruto);
                     }
 
-                    let colA = "Fornecedor";                       
+                    let colA = "Fornecedor";                        // Alterado para primeira letra maiúscula
                     let colB = dataEmissao;                          
                     let colC = mesEmissao;                           
                     let colD = fornecedorTratado;                    
