@@ -75,12 +75,6 @@
         #authButton:hover {
             background-color: #15803d;
         }
-        #sheetButton {
-            background-color: #0d9488;
-        }
-        #sheetButton:hover {
-            background-color: #0f766e;
-        }
         #status {
             margin-top: 20px;
             font-weight: bold;
@@ -102,9 +96,6 @@
         
         <button onclick="processarEEnviarXMLs()">2. Enviar Dados para a Planilha</button>
         
-        <!-- Botão novo para abrir a planilha diretamente -->
-        <button id="sheetButton" onclick="abrirPlanilha()">3. Abrir Planilha</button>
-        
         <div id="status"></div>
     </div>
 
@@ -122,7 +113,7 @@
             tokenClient = google.accounts.oauth2.initTokenClient({
                 client_id: CLIENT_ID,
                 scope: SCOPES,
-                callback: '', // Definido na hora da requisição
+                callback: '', 
             });
             gisInited = true;
         };
@@ -147,11 +138,6 @@
             };
 
             tokenClient.requestAccessToken({ prompt: '' });
-        }
-
-        function abrirPlanilha() {
-            const urlPlanilha = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
-            window.open(urlPlanilha, '_blank');
         }
 
         function pegarValorTag(doc, nomeTag) {
@@ -256,7 +242,7 @@
                         valorDescontoFormatado = formatarMoedaBR(valorDescBruto);
                     }
 
-                    let colA = "Fornecedor";                        // Alterado para primeira letra maiúscula
+                    let colA = "Fornecedor";                        
                     let colB = dataEmissao;                          
                     let colC = mesEmissao;                           
                     let colD = fornecedorTratado;                    
@@ -268,15 +254,13 @@
                     let dataCurta = dataEmissao.substring(0, 5);     
                     let colI = `PEDIDO ${dataCurta} INTER PJ`;       
 
-                    // Ordem exata das Colunas de A até I
                     linhasParaEnviar.push([colA, colB, colC, colD, colE, colF, colG, colH, colI]);
                 }
 
                 if (linhasParaEnviar.length > 0) {
-                    // Requisição para adicionar as linhas no final da planilha do Google Drive
                     const response = await gapi.client.sheets.spreadsheets.values.append({
                         spreadsheetId: SPREADSHEET_ID,
-                        range: 'A1', // A API detecta o final automaticamente com base na última linha preenchida
+                        range: 'A1', 
                         valueInputOption: 'USER_ENTERED',
                         resource: {
                             values: linhasParaEnviar
@@ -284,7 +268,13 @@
                     });
 
                     statusDiv.style.color = 'green';
-                    statusDiv.innerText = 'Sucesso! Dados enviados direto para a sua planilha do Google Drive.';
+                    statusDiv.innerText = 'Sucesso! Dados enviados. Abrindo a planilha...';
+
+                    // Abre a planilha automaticamente em uma nova aba logo após o envio com sucesso
+                    setTimeout(() => {
+                        window.open(`https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`, '_blank');
+                    }, 1000);
+
                 } else {
                     statusDiv.style.color = 'red';
                     statusDiv.innerText = 'Nenhum dado válido encontrado.';
